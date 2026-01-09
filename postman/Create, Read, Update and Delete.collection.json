@@ -214,7 +214,14 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							""
+							"pm.test(\"Status code deve ser 200 após a exclusão\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Mensagem de confirmação recebida\", function () {\r",
+							"    const jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.message).to.contains(\"sucesso\");\r",
+							"});"
 						],
 						"type": "text/javascript",
 						"packages": {},
