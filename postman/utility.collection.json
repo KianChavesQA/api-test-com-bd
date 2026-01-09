@@ -1,0 +1,104 @@
+{
+	"info": {
+		"_postman_id": "d93c192c-7c32-4342-8bcf-bcec0139d310",
+		"name": "utility",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48261323",
+		"_collection_link": "https://www.postman.com/kianchavesqa-3418551/workspace/api-test-com-bd/collection/48261323-d93c192c-7c32-4342-8bcf-bcec0139d310?action=share&source=collection_link&creator=48261323"
+	},
+	"item": [
+		{
+			"name": "add random product",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Gera dados aleatórios antes de enviar a requisição\r",
+							"pm.variables.set(\"random_name\", pm.variables.replaceIn('{{$randomProductName}}'));\r",
+							"pm.variables.set(\"random_price\", pm.variables.replaceIn('{{$randomPrice}}'));\r",
+							"pm.variables.set(\"random_qty\", Math.floor(Math.random() * 100));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"{{random_name}}\",\r\n  \"price\": {{random_price}},\r\n  \"quantity\": {{random_qty}}\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/products",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"products"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete all products",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status de limpeza é 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Mensagem de confirmação recebida\", function () {\r",
+							"    const jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.message).to.contains(\"sucesso\");\r",
+							"});\r",
+							"\r",
+							"// Limpa qualquer variável de ID que tenha sobrado nos seus testes anteriores\r",
+							"pm.globals.unset(\"last_id\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "admin-token",
+						"value": "{{vault:admin-token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:3000/test/clear-database",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"test",
+						"clear-database"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

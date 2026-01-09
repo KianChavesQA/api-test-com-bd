@@ -1,0 +1,292 @@
+{
+	"info": {
+		"_postman_id": "ed5ac8d4-9154-402c-9682-27aea1a43ef4",
+		"name": "Create, Read, Update and Delete",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48261323",
+		"_collection_link": "https://www.postman.com/kianchavesqa-3418551/workspace/api-test-com-bd/collection/48261323-ed5ac8d4-9154-402c-9682-27aea1a43ef4?action=share&source=collection_link&creator=48261323"
+	},
+	"item": [
+		{
+			"name": "add product",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// 1. Valida o contrato da API (Status e Formato)\r",
+							"pm.test(\"Status code é 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"// 2. Salva o ID retornado em uma variável global para o próximo passo\r",
+							"const jsonData = pm.response.json();\r",
+							"pm.globals.set(\"last_id\", jsonData.id);\r",
+							"\r",
+							"console.log(\"ID salvo para validação no banco: \" + jsonData.id);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"Mouse Gamer\",\r\n  \"price\": 150.00,\r\n  \"quantity\": 5\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/products",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"products"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get product by last id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const dbResult = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Validação DB: O produto existe no banco de dados\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"    pm.expect(dbResult.name).to.eql(\"Mouse Gamer\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Validação DB: O preço no banco está correto\", function () {\r",
+							"    // O MySQL retorna o preço como string ou número dependendo da config, \r",
+							"    // forçamos para Number para comparar\r",
+							"    pm.expect(Number(dbResult.price)).to.eql(150.00);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "// 1. Valida o contrato da API (Status e Formato)\r\npm.test(\"Status code é 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\n// 2. Salva o ID retornado em uma variável global para o próximo passo\r\nconst jsonData = pm.response.json();\r\npm.globals.set(\"last_id\", jsonData.id);\r\n\r\nconsole.log(\"ID salvo para validação no banco: \" + jsonData.id);",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/test/check-db/{{last_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"test",
+						"check-db",
+						"{{last_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update product",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status de alteração é 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"Mouse Gamer Wireless\",\r\n  \"price\": 299.90,\r\n  \"quantity\": 2\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/products/{{last_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"products",
+						"{{last_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "validate product update",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const dbResult = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Validação DB: O nome foi atualizado para Wireless\", function () {\r",
+							"    pm.expect(dbResult.name).to.eql(\"Mouse Gamer Wireless\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Validação DB: O preço novo foi persistido\", function () {\r",
+							"    pm.expect(Number(dbResult.price)).to.eql(299.90);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://localhost:3000/test/check-db/{{last_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"test",
+						"check-db",
+						"{{last_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete product by last id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://localhost:3000/products/{{last_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"products",
+						"{{last_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "validate product was deleted",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Validação DB: Confirmar que o produto foi excluído\", function () {\r",
+							"    // Esperamos que o status seja 404 porque o dado não deve mais existir\r",
+							"    pm.response.to.have.status(404);\r",
+							"    \r",
+							"    // Validamos a mensagem de erro que escrevemos na API\r",
+							"    const jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.error).to.eql('Não encontrado no banco');\r",
+							"});\r",
+							"\r",
+							"// Limpeza de segurança: Remove a variável global já que o ID não serve mais\r",
+							"pm.globals.unset(\"last_id\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/test/check-db/{{last_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"test",
+						"check-db",
+						"{{last_id}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
