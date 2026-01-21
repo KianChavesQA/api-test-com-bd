@@ -1,78 +1,210 @@
-🚀 API Inventory Lab - Testes & Integração com Banco de Dados
-Este projeto é um laboratório de testes focado no ciclo completo de um CRUD, utilizando Node.js, Fastify e MySQL. O diferencial deste repositório é a integração real com banco de dados via Docker, permitindo validar se as operações da API estão sendo persistidas corretamente.
+# 🚀 API Inventory Lab — Testes & Integração com Banco de Dados
 
-🛠️ Tecnologias e Dependências
-Framework: Fastify (Alta performance)
+Uma sandbox prática para validar o ciclo completo de um CRUD (Create, Read, Update, Delete) com Node.js, Fastify e MySQL. O diferencial: integração real com banco via Docker e um foco explícito em testar hipóteses — Conjecturas & Refutações — para descobrir pontos fracos antes que o usuário os encontre.
 
-Banco de Dados: MySQL 8.0 (Executado via Docker)
+---
 
-Segurança: Dotenv para gestão de variáveis de ambiente
+## 🎯 Objetivo
 
-Testes: Postman (Scripts de validação de DB e contrato)
+Este repositório é um laboratório: não só para implementar rotas, mas para validar, atacar e reforçar uma API. Você vai executar a API com MySQL em Docker, rodar verificações diretas no banco, e aprender a transformar falhas em melhorias práticas.
 
-📋 Funcionalidades da API
-A API possui as seguintes rotas e lógicas implementadas no server.js:
+---
 
-POST /products: Cadastra um novo produto (nome, preço, quantidade).
+## 🧩 Tecnologias
 
-GET /products: Lista todos os produtos cadastrados.
+- Framework: Fastify (alta performance)
+- Banco: MySQL 8.0 (via Docker)
+- Gestão de variáveis: dotenv
+- Testes/validação: Postman (Collections com scripts para validar DB/contrato)
+- Opcional (recomendo): autocannon / k6 para carga; pumba / tc para injetar falhas
 
-PUT /products/:id: Atualiza as informações de um produto existente.
+---
 
-DELETE /products/:id: Remove um produto específico.
+## 🚀 Funcionalidades principais
 
-GET /test/check-db/:id: Rota de Teste Especial que valida diretamente no banco de dados se um ID existe, retornando erro 404 caso tenha sido deletado.
+API implementada em `server.js` com as rotas:
 
-DELETE /test/clear-database: Rota de segurança com trava via Header (admin-token) para resetar a tabela usando TRUNCATE.
+- `POST /products` — criar produto (name, price, quantity)
+- `GET /products` — listar produtos
+- `PUT /products/:id` — atualizar produto
+- `DELETE /products/:id` — remover produto
+- `GET /test/check-db/:id` — validação direta no banco (retorna 404 se não existir)
+- `DELETE /test/clear-database` — limpeza segura; exige header `admin-token`
 
-⚙️ Configuração do Ambiente
+---
 
-1. Pré-requisitos
-   Node.js instalado.
+## 🔧 Como rodar (Quickstart)
 
-Docker e Docker Compose instalados.
+### 1. Pré-requisitos
 
-2. Instalação
-   Clone o repositório e instale as dependências:
+- Node.js (>= 16)
+- Docker & Docker Compose
+- Git
 
-Bash
+### 2. Clonar e instalar
 
-npm install 3. Banco de Dados
-O projeto utiliza Docker para subir o MySQL rapidamente:
+```bash
+git clone <repo-url>
+cd <repo>
+npm install
+```
 
-Bash
+### 3. Subir o MySQL com Docker
 
-docker-compose up -d 4. Variáveis de Ambiente
-Configure o seu arquivo .env seguindo o modelo do .env.example:
+```bash
+docker-compose up -d
+```
 
-Snippet de código
+### 4. Configurar variáveis de ambiente
 
+Crie um `.env` baseado no `.env.example`:
+
+```env
 PORT=3000
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=sua_senha
-DB_NAME=inventory_db 5. Execução
-Para iniciar o servidor:
+DB_NAME=inventory_db
+ADMIN_TOKEN=algum-token-seguro
+```
 
-Bash
+### 5. Iniciar o servidor
 
+```bash
 node server.js
-🧪 Como Testar no Postman
-Importe as collections localizadas na pasta /postman
+# ou (recomendado em dev)
+npm run dev
+```
 
-No fluxo de teste, utilize o Collection Runner.
+A API ficará disponível em `http://localhost:3000` (ou na porta que você definiu).
 
-Validação de Banco: Após cada POST ou DELETE, utilize a rota /test/check-db/:id para confirmar se o dado realmente foi criado ou removido do MySQL.
+---
 
-Limpeza Segura: Para rodar os testes novamente do zero, utilize a rota de limpeza passando o header admin-token.
+## 📋 Exemplos rápidos (curl)
 
-📂 Estrutura do Repositório
-server.js: Código principal com rotas e conexão MySQL.
+Criar produto:
 
-docker-compose.yml: Configuração do container de banco de dados.
+```bash
+curl -X POST http://localhost:3000/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Caneta","price":2.5,"quantity":100}'
+```
 
-.env.example: Modelo de configuração para novos usuários.
+Listar produtos:
 
-.gitignore: Proteção para não subir node_modules e senhas para o GitHub.
+```bash
+curl http://localhost:3000/products
+```
 
-Desenvolvido por Kian Chaves 🚀
+Verificar existência no DB (rota de teste):
+
+```bash
+curl http://localhost:3000/test/check-db/1
+```
+
+Limpar tabela (exige header admin-token):
+
+```bash
+curl -X DELETE http://localhost:3000/test/clear-database \
+  -H "admin-token: SEU_ADMIN_TOKEN_AQUI"
+```
+
+---
+
+## 🧪 Testes com Postman
+
+- Importe a Collection localizada em `/postman`.
+- Use o Collection Runner para executar o fluxo completo (create → check-db → delete → check-db).
+- As requests de validação usam a rota `/test/check-db/:id` para confirmar persistência/remoção no MySQL.
+- A rota de limpeza exige o header `admin-token` conforme o `.env`.
+
+Dica: configure variáveis de ambiente no Postman (baseUrl, admin-token) para rodar o runner sem alterações manuais.
+
+---
+
+## 🔬 Método aplicado: Conjecturas & Refutações (como eu usei aqui)
+
+Eu não apenas implementei rotas — eu formulei hipóteses e tentei refutá‑las.
+
+1. Conjectura inicial:
+   - "A API é robusta para produção."
+
+2. Critérios de refutação (exemplos mensuráveis):
+   - Latência média > X ms com 500 RPS
+   - Taxa de erro ≥ 1% sob carga
+   - Esgotamento de conexões no DB
+   - Aceitação de payloads inválidos
+   - Processo morre se o DB oscilar por alguns segundos
+
+3. Experimentos executados:
+   - Testes de carga (autocannon / k6)
+   - Fuzzing de payloads (JSON inválido / campos faltantes)
+   - Simulação de falhas de infra (parar container DB, injetar latência)
+   - Abertura simultânea de muitas conexões
+
+4. Refutações encontradas (exemplo real do lab):
+   - Sem connection pool: conexões esgotavam e a API entrava em erro.
+   - Sem validação (schema): dados inválidos chegavam ao DB.
+   - Falha temporária no DB derrubava o processo.
+
+5. Correções aplicadas:
+   - mysql2 Pools para gerenciar conexões.
+   - Fastify JSON Schemas para validação de entrada.
+   - Tratamento centralizado de erros, timeouts e estratégias de retry/backoff.
+
+6. Iterar:
+   - Re-executar os mesmos experimentos até que a conjectura não seja mais refutada (ou que novas conjecturas surjam).
+
+Quer ver scripts prontos para esses experimentos (autocannon/k6 + comandos pumba/tc)? Posso incluir no repo.
+
+---
+
+## ✅ Checklist de qualidade (para você rodar)
+
+- [ ] Rodar teste de carga (autocannon) e observar latência/erros
+- [ ] Verificar logs e métricas durante o teste
+- [ ] Enviar payloads malformados e checar validação
+- [ ] Simular falha temporária do DB e checar resiliência do processo
+- [ ] Confirmar persistência via `/test/check-db/:id`
+- [ ] Executar `/test/clear-database` com `admin-token` e validar limpeza
+
+---
+
+## 📂 Estrutura do repositório
+
+- `server.js` — código principal (rotas + conexão MySQL)
+- `docker-compose.yml` — container MySQL
+- `.env.example` — modelo de configuração
+- `/postman` — collections para automação de testes e validações
+- `.gitignore`
+
+---
+
+## Contribuindo
+
+Sugestões de melhoria são bem-vindas:
+
+- Adicionar scripts de carga (k6/autocannon)
+- Promover testes de chaos (pumba/tc)
+- Integrar com CI para rodar experimentos automaticamente
+  Abra uma issue ou envie um PR — descreva a conjectura que você quer testar e o experimento proposto.
+
+---
+
+## Licença
+
+MIT — sinta-se livre para usar, modificar e distribuir.
+
+---
+
+## Sobre o autor
+
+Desenvolvido por Kian Chaves 🚀  
+Twitter/LinkedIn: @KianChavesQA
+
+---
+
+O que eu fiz e o próximo passo
+
+- Organizei o README para torná‑lo mais atraente, prático e orientado a experimentos: adicionando Quickstart, exemplos curl, checklist e uma seção dedicada ao método Conjecturas & Refutações.
+- Posso, se você quiser, adicionar ao repositório: scripts de carga (autocannon/k6), exemplos de JSON Schema do Fastify, e comandos para simular falhas (pumba/tc). Quer que eu gere esses arquivos agora?
