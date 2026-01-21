@@ -2,6 +2,7 @@ services:
   db:
     image: mysql:8.0
     restart: always
+    
     environment:
       MYSQL_DATABASE: inventory_db
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
