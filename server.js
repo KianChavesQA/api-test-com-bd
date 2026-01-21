@@ -2,130 +2,142 @@ const fastify = require("fastify")({ logger: true });
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
-// Configuração da conexão usando varáveis de ambiente
-const dbConfig = {
+const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD, // Pega do .env
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || "inventory_db",
-};
-
-// Rota para cadastrar produto
-fastify.post("/products", async (request, reply) => {
-  const { name, price, quantity } = request.body;
-  const connection = await mysql.createConnection(dbConfig);
-
-  // Insere no banco
-  const [result] = await connection.execute(
-    "INSERT INTO products (name, price, quantity) VALUES (?, ?, ?)",
-    [name, price, quantity]
-  );
-
-  await connection.end();
-  return { id: result.insertId, message: "Produto salvo com sucesso!" };
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-// Inicialização e criação da tabela
-const start = async () => {
+const productSchema = {
+  body: {
+    type: "object",
+    required: ["name", "price", "quantity"],
+    properties: {
+      name: {
+        type: "string",
+        // Regex: ^(?!\s*$).+
+        // Não permite strings compostas apenas por espaços e exige pelo menos 1 caractere real.
+        pattern: "^(?!\\s*$).+",
+        minLength: 3,
+      },
+      price: { type: "number", exclusiveMinimum: 0 },
+      quantity: { type: "integer", minimum: 0 },
+    },
+  },
+};
+
+// --- ROTAS CRUD ---
+
+// 1. CREATE
+fastify.post("/products", { schema: productSchema }, async (request, reply) => {
   try {
-    // Ensure database exists (connect without database)
-    const adminConn = await mysql.createConnection({
-      host: dbConfig.host,
-      user: dbConfig.user,
-      password: dbConfig.password,
-    });
-    await adminConn.query(
-      `CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``
+    const { name, price, quantity } = request.body;
+    const [result] = await pool.execute(
+      "INSERT INTO products (name, price, quantity) VALUES (?, ?, ?)",
+      [name, price, quantity],
     );
-    await adminConn.end();
-
-    // Connect to the specific database and ensure table exists
-    const connection = await mysql.createConnection(dbConfig);
-    await connection.execute(`
-            CREATE TABLE IF NOT EXISTS products (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                price DECIMAL(10,2),
-                quantity INT
-            )
-        `);
-    await connection.end();
-
-    await fastify.listen({ port: process.env.PORT || 3000 });
-    console.log("Server started and DB ensured on port 3000");
+    return reply
+      .code(201)
+      .send({ id: result.insertId, message: "Produto criado!" });
   } catch (err) {
-    console.error(err);
-    process.exit(1);
+    return reply.status(500).send({ error: "Falha ao salvar produto" });
   }
-};
-// Rota de teste para verificar se o produto foi salvo
-fastify.get("/test/check-db/:id", async (request, reply) => {
-  const { id } = request.params;
-  const connection = await mysql.createConnection(dbConfig);
-  const [rows] = await connection.execute(
-    "SELECT * FROM products WHERE id = ?",
-    [id]
-  );
-  await connection.end();
-
-  if (rows.length === 0)
-    return reply.status(404).send({ error: "Não encontrado no banco" });
-  return rows[0];
 });
-// Rota para deletar um produto específico (Útil para limpeza de testes)
+
+// 2. UPDATE (Restaura e valida se existia)
+fastify.put(
+  "/products/:id",
+  { schema: productSchema },
+  async (request, reply) => {
+    const { id } = request.params;
+    const { name, price, quantity } = request.body;
+    try {
+      const [result] = await pool.execute(
+        "UPDATE products SET name = ?, price = ?, quantity = ? WHERE id = ?",
+        [name, price, quantity, id],
+      );
+      if (result.affectedRows === 0)
+        return reply.status(404).send({ error: "Não encontrado" });
+      return { message: "Produto atualizado!" };
+    } catch (err) {
+      return reply.status(500).send({ error: "Erro no update" });
+    }
+  },
+);
+
+// 3. DELETE (Restaura a funcionalidade de remover item único)
 fastify.delete("/products/:id", async (request, reply) => {
   const { id } = request.params;
-  const connection = await mysql.createConnection(dbConfig);
+  try {
+    const [result] = await pool.execute("DELETE FROM products WHERE id = ?", [
+      id,
+    ]);
 
-  await connection.execute("DELETE FROM products WHERE id = ?", [id]);
+    // REFUTAÇÃO: Se eu tentar deletar um ID que não existe, o sistema deve avisar
+    if (result.affectedRows === 0) {
+      return reply
+        .status(404)
+        .send({ error: "Produto não encontrado para deleção" });
+    }
 
-  await connection.end();
-  return { message: `Produto ${id} removido com sucesso!` };
-});
-
-// Rota para alterar um produto existente
-fastify.put("/products/:id", async (request, reply) => {
-  const { id } = request.params;
-  const { name, price, quantity } = request.body;
-  const connection = await mysql.createConnection(dbConfig);
-
-  // Executa o UPDATE no banco de dados
-  const [result] = await connection.execute(
-    "UPDATE products SET name = ?, price = ?, quantity = ? WHERE id = ?",
-    [name, price, quantity, id]
-  );
-
-  await connection.end();
-
-  // Verifica se algum registro foi de fato alterado
-  if (result.affectedRows === 0) {
-    return reply
-      .status(404)
-      .send({ error: "Produto não encontrado para alteração" });
+    // 204 No Content é o ideal para DELETE, mas 200 com mensagem facilita o seu teste inicial
+    return { message: `Produto ${id} removido com sucesso!` };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.status(500).send({ error: "Erro ao deletar produto" });
   }
-
-  return { message: "Produto atualizado com sucesso!" };
 });
-// Rota de limpeza com trava de segurança
-fastify.delete('/test/clear-database', async (request, reply) => {
-    // Definimos uma chave de segurança (pode colocar no seu .env depois)
-    const SECURITY_KEY = process.env.SECURITY_KEY; 
-    
-    // Captura a chave enviada no cabeçalho 'admin-token'
-    const userKey = request.headers['admin-token'];
 
-    if (userKey !== SECURITY_KEY) {
-        return reply.status(403).send({ error: 'Acesso negado: Chave de segurança inválida!' });
-    }
+// --- ROTAS DE TESTE/ADMIN ---
 
-    const connection = await mysql.createConnection(dbConfig);
-    try {
-        await connection.execute('TRUNCATE TABLE products');
-        return { message: 'Banco de dados limpo com sucesso!' };
-    } catch (err) {
-        return reply.status(500).send({ error: 'Erro ao limpar', details: err.message });
-    } finally {
-        await connection.end();
-    }
+// GET: Check DB
+fastify.get("/test/check-db/:id", async (request, reply) => {
+  try {
+    const { id } = request.params;
+    const [rows] = await pool.execute("SELECT * FROM products WHERE id = ?", [
+      id,
+    ]);
+    if (rows.length === 0)
+      return reply.status(404).send({ error: "Não encontrado" });
+    return rows[0];
+  } catch (err) {
+    return reply.status(500).send({ error: "Erro na consulta" });
+  }
 });
+
+// DELETE: Clear Database (Limpeza total)
+fastify.delete("/test/clear-database", async (request, reply) => {
+  const userKey = request.headers["admin-token"];
+  if (userKey !== process.env.SECURITY_KEY) {
+    return reply.status(403).send({ error: "Acesso negado!" });
+  }
+  try {
+    await pool.query("TRUNCATE TABLE products");
+    return { message: "Banco limpo!" };
+  } catch (err) {
+    return reply.status(500).send({ error: "Erro na limpeza" });
+  }
+});
+
+const start = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        price DECIMAL(10,2),
+        quantity INT
+      )
+    `);
+    await fastify.listen({ port: process.env.PORT || 3000, host: "0.0.0.0" });
+    console.log("🚀 Kian aprovou o início do servidor na porta 3000");
+  } catch (err) {
+    process.exit(1);
+    fastify.log.error(err);
+  }
+};
 start();
