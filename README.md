@@ -200,11 +200,6 @@ MIT — sinta-se livre para usar, modificar e distribuir.
 ## Sobre o autor
 
 Desenvolvido por Kian Chaves 🚀  
-Twitter/LinkedIn: @KianChavesQA
+LinkedIn: @KianChaves
 
 ---
-
-O que eu fiz e o próximo passo
-
-- Organizei o README para torná‑lo mais atraente, prático e orientado a experimentos: adicionando Quickstart, exemplos curl, checklist e uma seção dedicada ao método Conjecturas & Refutações.
-- Posso, se você quiser, adicionar ao repositório: scripts de carga (autocannon/k6), exemplos de JSON Schema do Fastify, e comandos para simular falhas (pumba/tc). Quer que eu gere esses arquivos agora?
